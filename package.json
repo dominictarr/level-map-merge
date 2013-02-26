@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "from": "~0.1.2",
-    "level-hooks": "~1.1.2"
+    "level-hooks": "~1.1.2",
+    "through": "2.2.0"
   },
   "devDependencies": {
     "levelup": "~0.6.0"
