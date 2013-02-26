@@ -28,7 +28,7 @@ module.exports = function (db, opts) {
   emitter.start = function () {
     if(batchMode) return
     batchMode = true
-    console.log('begin batch')
+    emitter.emit('batch:start')
 
     db.readStream({
       start: range.start,
@@ -45,7 +45,10 @@ module.exports = function (db, opts) {
         .on('end', function () {
           batchMode = false
           mapped = {}
-          console.log('batch done')
+          //TODO: keep count of the keys, so an subsequent batches
+          //can make a progress bar?
+
+          emitter.emit('batch:done')
         })
         .pipe(ws = db.writeStream())
     })
@@ -64,7 +67,6 @@ module.exports = function (db, opts) {
   }
 
   function doMap(key, value) {
-//    console.log('map', key)
     map(key, value, function (key, value) {
       if(!mapped[key]) mapped[key] = value
       else             mapped[key] = merge(mapped[key], value, key)
