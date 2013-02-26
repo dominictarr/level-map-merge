@@ -1,10 +1,12 @@
 
+//run the example from level-couch-sync to get this db
+
 var db = require('levelup')(process.env.HOME + '/.level-npm')
 var mapMerge = require('./')
 var Buffer = require('buffer').Buffer
 
 function parse(v) {
-  if('object' != typeof v || Buffer.isBuffer(v))
+  if('object' !== typeof v || Buffer.isBuffer(v))
     return JSON.parse(v.toString())
   return v
 }
