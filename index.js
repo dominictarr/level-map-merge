@@ -17,6 +17,8 @@ module.exports = function (db, opts) {
   var merge  = opts.merge
   var prefix = opts.prefix || ''
 
+  opts.json  = opts.json !== false
+
   if(!map) throw new Error('must provide map function')
   if(!merge) throw new Error('must provide merge function')
 
@@ -24,6 +26,17 @@ module.exports = function (db, opts) {
 
   var mapped = {}, batchMode = false
   db.mapMerge = emitter
+
+  function parse(e) {
+    if(!opts.json) return e
+    if(Buffer.isBuffer(e) || 'string' === typeof e)
+      return JSON.parse(e)
+  }
+
+  function stringify(e) {
+    if(!opts.json) return e
+    return JSON.stringify(e)
+  }
 
   emitter.start = function () {
     if(batchMode) return
@@ -35,12 +48,12 @@ module.exports = function (db, opts) {
       end: range.end
     })
     .pipe(through(function (data) { 
-      doMap(data.key, data.value)
+      doMap(data.key, parse(data.value))
     }))
     .on('end', function () {
       from(Object.keys(mapped).sort())
         .pipe(through(function (key) {
-          this.queue({key: prefix+key, value: JSON.stringify(mapped[key])})
+          this.queue({key: prefix+key, value: stringify(mapped[key])})
         }))
         .on('end', function () {
           batchMode = false
@@ -61,7 +74,7 @@ module.exports = function (db, opts) {
       //maybe return the mapped[key] incase it has been written async since
       //we called get.
       if(mapped[key])
-        mapped[key] = merge(mapped[key], value, key)
+        mapped[key] = merge(mapped[key], parse(value), key)
       cb(err, mapped[key] || value)
     })
   }
@@ -71,7 +84,8 @@ module.exports = function (db, opts) {
       if(!mapped[key]) mapped[key] = value
       else             mapped[key] = merge(mapped[key], value, key)
 
-      emitter.emit('merge', key, mapped[key])
+      //TODO: save merges when not in batchMode
+      emitter.emit('merge', key, mapped[key])      
     })
   }
 
@@ -80,9 +94,8 @@ module.exports = function (db, opts) {
     //deletes have to wait until batch mode
     if(!e.value) return
 
-    var key = e.key.toString()
-
     //check if in range
+    var key = e.key.toString()
     if(opts.start > key || opts.end < key) return
 
     //if it was inserted during batch mode, merge into the batch.
@@ -96,7 +109,7 @@ module.exports = function (db, opts) {
     else
       get(key, function (err, value) {
         doMap(key, value)
+        //TODO: save real-time updates to database.
       })
   })
-
 }
