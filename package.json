@@ -1,0 +1,22 @@
+{
+  "name": "level-map-merge",
+  "description": "",
+  "version": "0.0.0",
+  "homepage": "https://github.com/dominictarr/level-map-merge",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dominictarr/level-map-merge.git"
+  },
+  "dependencies": {
+    "from": "~0.1.2",
+    "level-hooks": "~1.1.2"
+  },
+  "devDependencies": {
+    "levelup": "~0.6.0"
+  },
+  "scripts": {
+    "test": "set -e; for t in test/*.js; do node $t; done"
+  },
+  "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
+  "license": "MIT"
+}
