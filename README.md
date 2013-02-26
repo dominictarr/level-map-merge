@@ -32,6 +32,7 @@ LevelMapMerge(db, {
       emit(e, [key])
     })
   },
+  //merge 'little' into 'big'
   merge: function (big, little, key) {
     little.forEach(function (e) {
       if(-1 == big.indexOf(e))
@@ -41,6 +42,11 @@ LevelMapMerge(db, {
   }
 }
 ```
+
+## Limitations
+
+currently, the entire batch view needs to fit into memory.
+(will be a problem with millions of records, but not for thousands)
 
 ## Licence 
 
