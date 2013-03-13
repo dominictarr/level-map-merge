@@ -33,18 +33,22 @@ var LevelUp       = require('levelup')
 
 var db = LevelUp()
 LevelMapMerge(db, {
-  json:true, 
   map: function (key, val, emit) {
+    //the raw data can be anything, so you have to parse it.
+    val = JSON.parse(val)
     val.split(/\W+/).forEach(function (e) {
+      //but the mapped structure is expected to be js.
       emit(e, [key])
     })
   },
   //merge 'little' into 'big'
   merge: function (big, little, key) {
+    //you don't need to use parse here!
     little.forEach(function (e) {
       if(-1 == big.indexOf(e))
         big.push(e)
     })
+    //don't use stringify here either!
     return big
   }
 }
