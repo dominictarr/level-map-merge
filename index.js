@@ -6,6 +6,19 @@ var EventEmitter = require('events').EventEmitter
 //TODO conver semvers so that they are lexiographically sortable.
 
 module.exports = function (db, mapDb, map, merge) {
+  var opts = opts || {}
+  if('object' == typeof map) {
+    opts = map
+    map = opts.map
+    merge = opts.merge
+  }
+
+  var parse     = opts.parse || function (e) {
+    try {
+      return JSON.parse(e)
+    } catch (err) { return e }
+  }
+  var stringify = opts.stringify || JSON.stringify
 
   if('string' === typeof mapDb)
     mapDb = db.sublevel(mapDb)
@@ -15,25 +28,15 @@ module.exports = function (db, mapDb, map, merge) {
 
   var mapped = {}, batchMode = false
 
-  function parse(e) {
-    if(Buffer.isBuffer(e) || 'string' === typeof e)
-      return JSON.parse(e)
-  }
-
-  function stringify(e) {
-    return JSON.stringify(e)
-  }
-
   mapDb.start = function () {
     if(batchMode) return
     batchMode = true
     mapDb.emit('start')
 
-    db.createReadStream({
-     // end: '~'
-    })
+    db.createReadStream()
     .pipe(through(function (data) { 
-      doMap(data.key, parse(data.value))
+      doMap(data.key, data.value)
+      mapDb.emit('progress_key', data.key)
     }))
     .on('end', function () {
       //TODO: when saving, merge with a stream of current keys,
@@ -57,18 +60,19 @@ module.exports = function (db, mapDb, map, merge) {
   }
 
   function get(key, cb) {
-    if(mapped[key]) cb(null, mapped[key])
+    if(mapped[key]) cb(null, mapped[key])   
 
     db.get(key, function (err, value) {
       //maybe return the mapped[key] incase it has been written async since
       //we called get.
       if(mapped[key])
         mapped[key] = merge(mapped[key], parse(value), key)
-      cb(err, mapped[key] || value)
+      cb(err, mapped[key] || parse(value))
     })
   }
 
   function doMap(key, value) {
+    try {
     map(key, value, function (key, value) {
       if(!mapped[key]) mapped[key] = value
       else             mapped[key] = merge(mapped[key], value, key)
@@ -76,6 +80,9 @@ module.exports = function (db, mapDb, map, merge) {
       //TODO: save merges when not in batchMode
       mapDb.emit('merge', key, mapped[key])      
     })
+    } catch (err) {
+      console.log(err)
+    }
   }
 
   db.post(function (e) {
