@@ -1,7 +1,11 @@
 
 //run the example from level-couch-sync to get this db
 
-var db = require('levelup')(process.env.HOME + '/.level-npm')
+var db = 
+  require('level-sublevel')
+    (require('levelup')
+      (process.env.HOME + '/.level-npm'))
+
 var mapMerge = require('./')
 var Buffer = require('buffer').Buffer
 
@@ -11,11 +15,11 @@ function parse(v) {
   return v
 }
 
-mapMerge(db, {
-  start: '\xFFnpm~package~',
-  end  : '\xFFnpm~package~~',
-  prefix: '\xFFnpm~index~',
-  map: function (key, val, emit) {
+var package = db.sublevel('package')
+var index   = db.sublevel('index')
+
+mapMerge(package, index,
+  function (key, val, emit) {
     val = parse(val)
 
     function split (ary) {
@@ -39,7 +43,7 @@ mapMerge(db, {
     split(val.readme)
 
   },
-  merge: function (M, m, key) {
+  function (M, m, key) {
     M = parse(M);
     m = parse(m);
 
@@ -47,14 +51,10 @@ mapMerge(db, {
       if(!M[k]) M[k] = m[k]
       else      M[k] += m[k]
     }
-
+    console.log(M)
     if(Math.random() < 0.0001)
       console.log(key)
 
     return M
-  }
-
-})
-
-db.mapMerge.start()
+  }).start()
 
