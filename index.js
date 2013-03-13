@@ -34,28 +34,28 @@ module.exports = function (db, mapDb, map, merge) {
     mapDb.emit('start')
 
     db.createReadStream()
-    .pipe(through(function (data) { 
-      doMap(data.key, data.value)
-      mapDb.emit('progress_key', data.key)
-    }))
-    .on('end', function () {
-      //TODO: when saving, merge with a stream of current keys,
-      //so you can delete keys that where not in the batch!
-      //Alternatively, 
-      from(Object.keys(mapped).sort())
-        .pipe(through(function (key) {
-          this.queue({key: key, value: stringify(mapped[key])})
-        }))
-        .on('end', function () {
-          batchMode = false
-          mapped = {}
-          //TODO: keep count of the keys, so an subsequent batches
-          //can make a progress bar?
+      .pipe(through(function (data) { 
+        doMap(data.key, data.value)
+        mapDb.emit('progress_key', data.key)
+      }))
+      .on('end', function () {
+        //TODO: when saving, merge with a stream of current keys,
+        //so you can delete keys that where not in the batch!
+        //Alternatively, 
+        from(Object.keys(mapped).sort())
+          .pipe(through(function (key) {
+            this.queue({key: key, value: stringify(mapped[key])})
+          }))
+          .on('end', function () {
+            batchMode = false
+            mapped = {}
+            //TODO: keep count of the keys, so an subsequent batches
+            //can make a progress bar?
 
-          mapDb.emit('done')
-        })
-        .pipe(ws = mapDb.createWriteStream())
-    })
+            mapDb.emit('done')
+          })
+          .pipe(ws = mapDb.createWriteStream())
+      })
     return mapDb
   }
 
