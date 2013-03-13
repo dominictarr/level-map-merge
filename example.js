@@ -20,8 +20,7 @@ var index   = db.sublevel('index')
 
 mapMerge(package, index,
   function (key, val, emit) {
-    val = parse(val)
-
+    val = JSON.parse(val)
     function split (ary) {
       if(!ary) return
       if('string' == typeof ary)
@@ -32,7 +31,7 @@ mapMerge(package, index,
       ary.forEach(function (w) {
         w = w.toUpperCase()
         var o = {}
-        o[val.name] = 1
+        o[val.name] = '1'
         emit(w, o)
       })         
     }
@@ -44,14 +43,13 @@ mapMerge(package, index,
 
   },
   function (M, m, key) {
-    M = parse(M);
-    m = parse(m);
+    //M = parse(M);
+    //m = parse(m);
 
     for(var k in m) {
       if(!M[k]) M[k] = m[k]
       else      M[k] += m[k]
     }
-    console.log(M)
     if(Math.random() < 0.0001)
       console.log(key)
 
