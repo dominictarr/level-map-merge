@@ -16,13 +16,11 @@ module.exports = function (db, mapDb, map, merge) {
   var mapped = {}, batchMode = false
 
   function parse(e) {
-  //  if(!opts.json) return e
     if(Buffer.isBuffer(e) || 'string' === typeof e)
       return JSON.parse(e)
   }
 
   function stringify(e) {
-//    if(!opts.json) return e
     return JSON.stringify(e)
   }
 
@@ -87,8 +85,6 @@ module.exports = function (db, mapDb, map, merge) {
 
     //check if in range
     var key = e.key.toString()
-    if(opts.start > key || opts.end < key) return
-
     //if it was inserted during batch mode, merge into the batch.
     //there might be a small racecondition here when if batch
     //has started writing, but hasn't finished yet.
