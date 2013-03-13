@@ -1,59 +1,49 @@
-
-var fs         = require('fs')
-var through    = require('through')
-var from       = require('from')
+var fs           = require('fs')
+var through      = require('through')
+var from         = require('from')
 var EventEmitter = require('events').EventEmitter
-var LevelHooks = require('level-hooks')
 
 //TODO conver semvers so that they are lexiographically sortable.
 
-module.exports = function (db, opts) {
+module.exports = function (db, mapDb, map, merge) {
 
-  LevelHooks()(db)
-
-  var range = opts.range || {start: opts.start || '', end: opts.end || '~'} 
-
-  var map    = opts.map
-  var merge  = opts.merge
-  var prefix = opts.prefix || ''
-
-  opts.json  = opts.json !== false
+  if('string' === typeof mapDb)
+    mapDb = db.sublevel(mapDb)
 
   if(!map) throw new Error('must provide map function')
   if(!merge) throw new Error('must provide merge function')
 
-  var emitter = new EventEmitter()
-
   var mapped = {}, batchMode = false
-  db.mapMerge = emitter
 
   function parse(e) {
-    if(!opts.json) return e
+  //  if(!opts.json) return e
     if(Buffer.isBuffer(e) || 'string' === typeof e)
       return JSON.parse(e)
   }
 
   function stringify(e) {
-    if(!opts.json) return e
+//    if(!opts.json) return e
     return JSON.stringify(e)
   }
 
-  emitter.start = function () {
+  mapDb.start = function () {
     if(batchMode) return
     batchMode = true
-    emitter.emit('batch:start')
+    mapDb.emit('start')
 
-    db.readStream({
-      start: range.start,
-      end: range.end
+    db.createReadStream({
+     // end: '~'
     })
     .pipe(through(function (data) { 
       doMap(data.key, parse(data.value))
     }))
     .on('end', function () {
+      //TODO: when saving, merge with a stream of current keys,
+      //so you can delete keys that where not in the batch!
+      //Alternatively, 
       from(Object.keys(mapped).sort())
         .pipe(through(function (key) {
-          this.queue({key: prefix+key, value: stringify(mapped[key])})
+          this.queue({key: key, value: stringify(mapped[key])})
         }))
         .on('end', function () {
           batchMode = false
@@ -61,10 +51,11 @@ module.exports = function (db, opts) {
           //TODO: keep count of the keys, so an subsequent batches
           //can make a progress bar?
 
-          emitter.emit('batch:done')
+          mapDb.emit('done')
         })
-        .pipe(ws = db.writeStream())
+        .pipe(ws = mapDb.createWriteStream())
     })
+    return mapDb
   }
 
   function get(key, cb) {
@@ -85,11 +76,11 @@ module.exports = function (db, opts) {
       else             mapped[key] = merge(mapped[key], value, key)
 
       //TODO: save merges when not in batchMode
-      emitter.emit('merge', key, mapped[key])      
+      mapDb.emit('merge', key, mapped[key])      
     })
   }
 
-  db.hooks.post(function (e) {
+  db.post(function (e) {
 
     //deletes have to wait until batch mode
     if(!e.value) return
@@ -110,6 +101,10 @@ module.exports = function (db, opts) {
       get(key, function (err, value) {
         doMap(key, value)
         //TODO: save real-time updates to database.
+        //maybe thing here is to gather realtime updates
+        //until after batch has finished, and then process them.
+        //that would be reliable, I think.
       })
   })
+  return mapDb
 }
