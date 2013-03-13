@@ -14,6 +14,13 @@ to have slightly old or incorrect data, like an inverted index!
 The included `./example.js` builds a full text index for the
 npm registry is about ~1.5 minutes. 
 
+## JSON
+
+one of the performance improvements possible in `map-merge` is to run a batch
+and keep the merged data structure in memory, instead of stringifing and parsing.
+Building an inverted index of all the READMEs in npm takes over 20 minutes parsing JSON,
+but only 40 seconds keeping it as objects!
+
 ## Example
 
 Inverted Index (word -> list of documents it appears in)
