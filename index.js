@@ -5,12 +5,13 @@ var EventEmitter = require('events').EventEmitter
 
 //TODO conver semvers so that they are lexiographically sortable.
 
-module.exports = function (db, mapDb, map, merge) {
+module.exports = function (db, mapDb, map, merge, initial) {
   var opts = opts || {}
   if('object' == typeof map) {
     opts = map
     map = opts.map
     merge = opts.merge
+    initial = opts.initial
   }
 
   var parse     = opts.parse || function (e) {
@@ -25,6 +26,7 @@ module.exports = function (db, mapDb, map, merge) {
 
   if(!map) throw new Error('must provide map function')
   if(!merge) throw new Error('must provide merge function')
+  if(!initial) initial = {}
 
   var mapped = {}, batchMode = false
 
@@ -74,7 +76,7 @@ module.exports = function (db, mapDb, map, merge) {
   function doMap(key, value) {
     try {
     map(key, value, function (key, value) {
-      if(!mapped[key]) mapped[key] = value
+      if(!mapped[key]) mapped[key] = merge(initial, value, key)
       else             mapped[key] = merge(mapped[key], value, key)
 
       //TODO: save merges when not in batchMode
